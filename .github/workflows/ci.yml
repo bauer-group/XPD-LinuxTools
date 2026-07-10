@@ -1,0 +1,89 @@
+# =============================================================================
+# CI Workflow
+# =============================================================================
+# Validiert jeden PR und jeden Push auf main:
+#   - go vet + go test (mit Race-Detector)
+#   - golangci-lint (v2)
+#   - GoReleaser-Config + Snapshot-Build inkl. nfpm (deb/rpm), ohne Publish
+#
+# Fängt kaputte Package-Configs bereits im PR ab (Snapshot fährt nfpm mit).
+# =============================================================================
+
+name: 🧪 CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 🧪 Vet & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: 🔍 go vet
+        run: go vet ./...
+
+      - name: 🧪 go test (race)
+        run: go test -race -count=1 ./...
+
+  lint:
+    name: 🔎 Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: 🔎 golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+
+  package:
+    name: 📦 Validate packaging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: ✅ GoReleaser check
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: check
+
+      - name: 📦 GoReleaser snapshot (build + nfpm, no publish)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --snapshot --clean --skip=publish

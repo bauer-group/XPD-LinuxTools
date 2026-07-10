@@ -1,0 +1,20 @@
+# Build / release output
+/dist/
+/bin/
+
+# Compiled binaries & test artifacts
+*.exe
+*.test
+*.out
+coverage.*
+
+# Generated packages
+*.deb
+*.rpm
+*.apk
+
+# Editor / OS cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,79 @@
+# GoReleaser v2 — baut & paketiert alle Tools des Monorepos.
+#
+# Rolle im Release-Flow: GoReleaser BAUT und PAKETIERT nur (Cross-Compile + nfpm
+# für .deb/.rpm + Archive + Checksums). Es erzeugt KEIN GitHub-Release und KEINEN
+# Tag — das macht semantic-release (siehe .github/workflows/release.yml). Die
+# Artefakte hängt der packages.yml-Workflow per `gh release upload` ans Release.
+#
+# Neues Tool hinzufügen = je einen Block unter builds/archives/nfpms anhängen
+# (main: ./cmd/<tool>). `dist/*.deb dist/*.rpm` erfasst dann automatisch alle Tools.
+version: 2
+
+project_name: xpd-linuxtools
+
+builds:
+  - id: fastchown
+    main: ./cmd/fastchown
+    binary: fastchown
+    env:
+      - CGO_ENABLED=0          # reines Go -> kostenloser Cross-Compile, kein QEMU
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"   # reproduzierbare Builds
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+
+archives:
+  - id: fastchown
+    ids:
+      - fastchown
+    name_template: "fastchown_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    files:
+      - src: cmd/fastchown/README.md
+        dst: README.md
+      - src: cmd/fastchown/TROUBLESHOOTING.md
+        dst: TROUBLESHOOTING.md
+      - LICENSE
+
+nfpms:
+  - id: fastchown
+    package_name: fastchown
+    ids:
+      - fastchown
+    vendor: "BAUER GROUP"
+    homepage: "https://github.com/bauer-group/XPD-LinuxTools"
+    maintainer: "BAUER GROUP <opensource@bauer-group.com>"
+    description: "Paralleler, rekursiver chown mit skip-if-unchanged für sehr große Filetrees."
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    # Idiomatische Paketnamen je Paketmanager: fastchown_<v>_amd64.deb UND
+    # fastchown-<v>.x86_64.rpm (deb nutzt amd64/arm64, rpm x86_64/aarch64).
+    file_name_template: "{{ .ConventionalFileName }}"
+    contents:
+      - src: ./cmd/fastchown/README.md
+        dst: /usr/share/doc/fastchown/README.md
+        file_info:
+          mode: 0644
+      - src: ./cmd/fastchown/TROUBLESHOOTING.md
+        dst: /usr/share/doc/fastchown/TROUBLESHOOTING.md
+        file_info:
+          mode: 0644
+      - src: ./LICENSE
+        dst: /usr/share/doc/fastchown/copyright
+        file_info:
+          mode: 0644
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  disable: true                # semantic-release besitzt CHANGELOG.md

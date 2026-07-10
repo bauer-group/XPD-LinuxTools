@@ -1,0 +1,91 @@
+# =============================================================================
+# Build Packages Workflow
+# =============================================================================
+# Triggers:
+#   - Nach erfolgreichem Release-Workflow (workflow_run)
+#   - Manuell (workflow_dispatch) mit Tag-Input
+#
+# Baut per GoReleaser die .deb/.rpm/.tar.gz-Artefakte (linux amd64+arm64) und
+# hängt sie an das von semantic-release erzeugte GitHub-Release.
+#
+# Wichtig: GoReleaser läuft mit `--skip=publish` -> es erzeugt KEIN eigenes
+# Release/Tag. semantic-release ist alleiniger Herr über Version/Tag/CHANGELOG;
+# hier werden die Artefakte nur via `gh release upload` nachgereicht.
+#
+# Note: Uses workflow_run instead of release event because releases created by
+# GITHUB_TOKEN don't trigger further workflows.
+# =============================================================================
+
+name: 📦 Build Packages
+
+on:
+  workflow_run:
+    workflows: ['🚀 Release']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach packages to (e.g. v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  packages:
+    name: 📦 Build & Upload deb/rpm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: 🏷️ Determine Release Tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG=$(gh release view --repo "${{ github.repository }}" --json tagName -q '.tagName')
+            if [ -z "$TAG" ]; then
+              echo "❌ No release found"
+              exit 1
+            fi
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "📦 Latest release: $TAG"
+          fi
+
+      - name: 📥 Checkout at tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: 📦 Build & package (no publish)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --skip=publish,validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.tag }}
+
+      - name: 📤 Upload assets to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          gh release upload "$TAG" \
+            dist/*.deb dist/*.rpm dist/*.tar.gz dist/checksums.txt \
+            --clobber

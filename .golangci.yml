@@ -1,0 +1,19 @@
+# golangci-lint v2 Konfiguration (Schema-Version 2).
+# Bewusst schlank: der Standard-Linter-Satz plus ein paar risikoarme Extras.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard        # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - unconvert            # überflüssige Typkonvertierungen
+    - bodyclose            # nicht geschlossene HTTP-Bodies (Zukunftssicherung)
+  # Hinweis: misspell bewusst NICHT aktiviert - die Codebasis nutzt deutsche
+  # Kommentare, misspell kennt nur Englisch und liefert nur False-Positives.
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
