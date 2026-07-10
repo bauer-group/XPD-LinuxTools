@@ -13,6 +13,7 @@ bauen lassen.
 | Tool | Beschreibung | Doku |
 | ---- | ------------ | ---- |
 | **fastchown** | Paralleler, rekursiver `chown` mit skip-if-unchanged für sehr große Filetrees (ZFS/RAIDZ). | [README](cmd/fastchown/README.md) · [Troubleshooting](cmd/fastchown/TROUBLESHOOTING.md) |
+| **fastchmod** | Paralleler, rekursiver `chmod` mit skip-if-unchanged; getrennte Modi für Dirs/Files in einem Durchlauf. | [README](cmd/fastchmod/README.md) · [Troubleshooting](cmd/fastchmod/TROUBLESHOOTING.md) |
 
 ## Installation
 
@@ -56,7 +57,8 @@ Die vollständige Checkliste steht in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```text
 cmd/<tool>/        # je ein CLI (package main); Einstieg für neue Tools
-internal/          # geteilte, plattformneutrale Logik (z. B. internal/ownership)
+internal/parwalk/  # gemeinsame Engine: paralleler Walk + Worker + skip + Fortschritt
+internal/          # weitere geteilte, plattformneutrale Logik (ownership, filemode, …)
 .goreleaser.yaml   # Build + .deb/.rpm-Paketierung aller Tools (GoReleaser v2)
 .github/workflows/ # CI (Test/Lint/Packaging) + Release + Packages
 ```
