@@ -75,14 +75,14 @@ jobs:
           cache: true
 
       - name: ✅ GoReleaser check
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: '~> v2'
           args: check
 
       - name: 📦 GoReleaser snapshot (build + nfpm, no publish)
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: '~> v2'
