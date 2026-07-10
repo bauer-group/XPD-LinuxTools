@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/bauer-group/xpd-linuxtools/internal/ownership"
+	"github.com/bauer-group/xpd-linuxtools/internal/parwalk"
 )
 
 // buildTree legt einen kleinen Baum an (Verzeichnis + Dateien + Symlink) und
@@ -36,6 +37,13 @@ func buildTree(t *testing.T) (root string, entries int64) {
 	return root, 5
 }
 
+func runChown(spec ownership.Spec, dryRun bool, workers int, roots ...string) *parwalk.Stats {
+	st, _ := parwalk.Run(context.Background(),
+		parwalk.Config{Roots: roots, Workers: workers},
+		chownAction(spec, dryRun, false))
+	return st
+}
+
 func gidOf(t *testing.T, path string) int {
 	t.Helper()
 	fi, err := os.Lstat(path)
@@ -45,69 +53,57 @@ func gidOf(t *testing.T, path string) int {
 	return int(fi.Sys().(*syscall.Stat_t).Gid)
 }
 
-// Erster Lauf auf einem frisch angelegten Baum: alle Einträge gehören bereits
-// dem aktuellen User -> chown auf die eigene UID/GID muss alles überspringen.
-func TestRunSkipsWhenAlreadyOwned(t *testing.T) {
+// Frisch angelegter Baum gehört bereits dem aktuellen User -> chown auf die
+// eigene UID/GID muss alles überspringen.
+func TestChownSkipsWhenAlreadyOwned(t *testing.T) {
 	root, want := buildTree(t)
 	spec := ownership.Spec{UID: os.Getuid(), GID: os.Getgid(), HasUID: true, HasGID: true}
 
-	st, interrupted := run(context.Background(), config{spec: spec, roots: []string{root}, workers: 4})
+	st := runChown(spec, false, 4, root)
 
-	if interrupted {
-		t.Fatal("unerwartet abgebrochen")
+	if got := st.Scanned(); got != want {
+		t.Fatalf("Scanned=%d, erwartet %d", got, want)
 	}
-	if got := st.scanned.Load(); got != want {
-		t.Fatalf("scanned=%d, erwartet %d", got, want)
+	if got := st.Errors(); got != 0 {
+		t.Fatalf("Errors=%d, erwartet 0", got)
 	}
-	if got := st.errors.Load(); got != 0 {
-		t.Fatalf("errors=%d, erwartet 0", got)
+	if got := st.Changed(); got != 0 {
+		t.Errorf("Changed=%d, erwartet 0 (bereits korrekt)", got)
 	}
-	if got := st.changed.Load(); got != 0 {
-		t.Errorf("changed=%d, erwartet 0 (bereits korrekt)", got)
-	}
-	if got := st.skipped.Load(); got != want {
-		t.Errorf("skipped=%d, erwartet %d (alle)", got, want)
+	if got := st.Skipped(); got != want {
+		t.Errorf("Skipped=%d, erwartet %d (alle)", got, want)
 	}
 }
 
-// Dry-run darf zwar zählen, aber nichts anfassen. Wir setzen eine abweichende
-// Ziel-GID, sodass alle Einträge "würden geändert" zählen; da -n gesetzt ist,
-// wird kein lchown ausgeführt (kein root nötig) und die reale GID bleibt.
-func TestRunDryRunCountsButDoesNotMutate(t *testing.T) {
+// Dry-run darf zwar zählen, aber nichts anfassen. Abweichende Ziel-GID -> alle
+// "würden geändert"; da -n gesetzt ist, wird kein lchown ausgeführt.
+func TestChownDryRunCountsButDoesNotMutate(t *testing.T) {
 	root, want := buildTree(t)
 	origGid := os.Getgid()
 	spec := ownership.Spec{UID: os.Getuid(), GID: origGid + 1, HasUID: true, HasGID: true}
 
-	st, _ := run(context.Background(), config{spec: spec, roots: []string{root}, workers: 4, dryRun: true})
+	st := runChown(spec, true, 4, root)
 
-	if got := st.changed.Load(); got != want {
-		t.Errorf("changed=%d, erwartet %d (alle würden geändert)", got, want)
+	if got := st.Changed(); got != want {
+		t.Errorf("Changed=%d, erwartet %d (alle würden geändert)", got, want)
 	}
-	if got := st.skipped.Load(); got != 0 {
-		t.Errorf("skipped=%d, erwartet 0", got)
-	}
-	// Beweis, dass dry-run nichts verändert hat:
 	if got := gidOf(t, filepath.Join(root, "a.txt")); got != origGid {
 		t.Errorf("dry-run hat GID verändert: got %d, erwartet %d", got, origGid)
 	}
 }
 
-// Die Zählung muss unabhängig von der Worker-Anzahl deterministisch sein
-// (fängt Doppelzählung / Races; mit `go test -race` zusätzlich abgesichert).
-func TestRunDeterministicAcrossWorkerCounts(t *testing.T) {
+func TestChownDeterministicAcrossWorkerCounts(t *testing.T) {
 	spec := ownership.Spec{UID: os.Getuid(), GID: os.Getgid(), HasUID: true, HasGID: true}
 
 	root1, want := buildTree(t)
-	st1, _ := run(context.Background(), config{spec: spec, roots: []string{root1}, workers: 1})
-
+	st1 := runChown(spec, false, 1, root1)
 	root8, _ := buildTree(t)
-	st8, _ := run(context.Background(), config{spec: spec, roots: []string{root8}, workers: 8})
+	st8 := runChown(spec, false, 8, root8)
 
-	if st1.scanned.Load() != want || st8.scanned.Load() != want {
-		t.Fatalf("scanned uneinheitlich: -j1=%d -j8=%d, erwartet %d",
-			st1.scanned.Load(), st8.scanned.Load(), want)
+	if st1.Scanned() != want || st8.Scanned() != want {
+		t.Fatalf("Scanned uneinheitlich: -j1=%d -j8=%d, erwartet %d", st1.Scanned(), st8.Scanned(), want)
 	}
-	if st1.skipped.Load() != st8.skipped.Load() {
-		t.Errorf("skipped uneinheitlich: -j1=%d vs -j8=%d", st1.skipped.Load(), st8.skipped.Load())
+	if st1.Skipped() != st8.Skipped() {
+		t.Errorf("Skipped uneinheitlich: -j1=%d vs -j8=%d", st1.Skipped(), st8.Skipped())
 	}
 }
