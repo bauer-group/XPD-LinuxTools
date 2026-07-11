@@ -14,6 +14,7 @@ bauen lassen.
 | ---- | ------------ | ---- |
 | **fastchown** | Paralleler, rekursiver `chown` mit skip-if-unchanged für sehr große Filetrees (ZFS/RAIDZ). | [README](cmd/fastchown/README.md) · [Troubleshooting](cmd/fastchown/TROUBLESHOOTING.md) |
 | **fastchmod** | Paralleler, rekursiver `chmod` mit skip-if-unchanged; getrennte Modi für Dirs/Files in einem Durchlauf. | [README](cmd/fastchmod/README.md) · [Troubleshooting](cmd/fastchmod/TROUBLESHOOTING.md) |
+| **fastfind** | Paralleler, rekursiver `find` (Owner/Mode/Größe/Alter/verwaiste Owner); pipe-tauglich als Vorstufe zu fastchown/fastchmod. | [README](cmd/fastfind/README.md) · [Troubleshooting](cmd/fastfind/TROUBLESHOOTING.md) |
 
 ## Installation
 

@@ -42,6 +42,21 @@ builds:
       - -s -w
       - -X main.version={{ .Version }}
 
+  - id: fastfind
+    main: ./cmd/fastfind
+    binary: fastfind
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+
 archives:
   - id: fastchown
     ids:
@@ -66,6 +81,19 @@ archives:
       - src: cmd/fastchmod/README.md
         dst: README.md
       - src: cmd/fastchmod/TROUBLESHOOTING.md
+        dst: TROUBLESHOOTING.md
+      - LICENSE
+
+  - id: fastfind
+    ids:
+      - fastfind
+    name_template: "fastfind_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    files:
+      - src: cmd/fastfind/README.md
+        dst: README.md
+      - src: cmd/fastfind/TROUBLESHOOTING.md
         dst: TROUBLESHOOTING.md
       - LICENSE
 
@@ -125,6 +153,34 @@ nfpms:
           mode: 0644
       - src: ./LICENSE
         dst: /usr/share/doc/fastchmod/copyright
+        file_info:
+          mode: 0644
+
+  - id: fastfind
+    package_name: fastfind
+    ids:
+      - fastfind
+    vendor: "BAUER GROUP"
+    homepage: "https://github.com/bauer-group/XPD-LinuxTools"
+    maintainer: "BAUER GROUP <opensource@bauer-group.com>"
+    description: "Paralleler, rekursiver find mit Owner-/Mode-/Größen-/Alter-Prädikaten."
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    file_name_template: "{{ .ConventionalFileName }}"
+    contents:
+      - src: ./cmd/fastfind/README.md
+        dst: /usr/share/doc/fastfind/README.md
+        file_info:
+          mode: 0644
+      - src: ./cmd/fastfind/TROUBLESHOOTING.md
+        dst: /usr/share/doc/fastfind/TROUBLESHOOTING.md
+        file_info:
+          mode: 0644
+      - src: ./LICENSE
+        dst: /usr/share/doc/fastfind/copyright
         file_info:
           mode: 0644
 
