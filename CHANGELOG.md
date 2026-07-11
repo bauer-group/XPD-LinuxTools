@@ -1,3 +1,13 @@
+## [0.3.0](https://github.com/bauer-group/XPD-LinuxTools/compare/v0.2.0...v0.3.0) (2026-07-11)
+
+### 🚀 Features
+
+* added fastfind parallel recursive find ([6b240c4](https://github.com/bauer-group/XPD-LinuxTools/commit/6b240c44ff965595a0a73062a0b7e343e7ac6470))
+
+### ♻️ Refactoring
+
+* separated parwalk progress from verbose ([895c2f5](https://github.com/bauer-group/XPD-LinuxTools/commit/895c2f5570200beef4a518c66c81e058bd348617))
+
 ## [0.2.0](https://github.com/bauer-group/XPD-LinuxTools/compare/v0.1.0...v0.2.0) (2026-07-10)
 
 ### 🚀 Features
