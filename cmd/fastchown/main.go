@@ -90,6 +90,7 @@ func main() {
 		Roots:    roots,
 		Workers:  *workers,
 		Verbose:  *verbose,
+		Progress: *verbose,
 		Interval: *interval,
 	}, chownAction(spec, *dryRun, *verbose))
 	stop()

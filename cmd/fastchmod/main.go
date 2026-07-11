@@ -88,6 +88,7 @@ func main() {
 		Roots:    roots,
 		Workers:  *workers,
 		Verbose:  *verbose,
+		Progress: *verbose,
 		Interval: *interval,
 	}, chmodAction(dirMode, fileMode, *dryRun, *verbose))
 	stop()

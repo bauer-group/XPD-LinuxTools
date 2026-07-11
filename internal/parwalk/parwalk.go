@@ -46,7 +46,8 @@ func (s *Stats) Errors() int64  { return s.errors.Load() }
 type Config struct {
 	Roots    []string
 	Workers  int           // < 1 wird als 1 behandelt
-	Verbose  bool          // periodische Fortschrittsausgabe auf stderr
+	Verbose  bool          // Walk-/Eintragsfehler auf stderr loggen
+	Progress bool          // periodischer Fortschritts-Ticker auf stderr
 	Interval time.Duration // Fortschrittsintervall (0 => 5s)
 }
 
@@ -91,7 +92,7 @@ func Run(ctx context.Context, cfg Config, action Action) (*Stats, bool) {
 
 	start := time.Now()
 	done := make(chan struct{})
-	if cfg.Verbose {
+	if cfg.Progress {
 		go progress(st, start, cfg.Interval, done)
 	}
 
